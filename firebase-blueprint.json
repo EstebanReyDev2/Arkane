@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product in the store catalog.",
+      "type": "object",
+      "properties": {
+        "sku": { "type": "string", "description": "Stock Keeping Unit" },
+        "name": { "type": "string", "description": "Product name" },
+        "slug": { "type": "string", "description": "URL-friendly slug" },
+        "description": { "type": "string", "description": "Product description" },
+        "basePrice": { "type": "number", "description": "Base price in cents or base currency" },
+        "salePrice": { "type": ["number", "null"], "description": "Sale price if applicable" },
+        "salePercentage": { "type": ["number", "null"], "description": "Discount percentage" },
+        "category": { "type": "string", "description": "Main category" },
+        "subcategory": { "type": "string", "description": "Subcategory" },
+        "vertical": { "type": "string", "description": "Store vertical (e.g., fashion)" },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string" },
+              "alt": { "type": "string" },
+              "type": { "type": "string" }
+            }
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "sku": { "type": "string" },
+              "color": { "type": "string" },
+              "colorHex": { "type": "string" },
+              "size": { "type": "string" },
+              "stock": { "type": "number" },
+              "price": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "attributes": {
+          "type": "object",
+          "properties": {
+            "material": { "type": "string" },
+            "care": { "type": "array", "items": { "type": "string" } },
+            "fit": { "type": "string" },
+            "collection": { "type": "string" }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["sku", "name", "slug", "basePrice", "category", "isActive"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile and role information.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Store products catalog"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles and roles"
+    }
+  }
+}
