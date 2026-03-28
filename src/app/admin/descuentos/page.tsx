@@ -306,7 +306,7 @@ export default function DiscountsPage() {
                 <Label className="text-[13px] font-bold">Tipo de descuento</Label>
                 <RadioGroup 
                   value={type} 
-                  onValueChange={(v: any) => setType(v)}
+                  onValueChange={(v: any) => setType(v as "percentage" | "fixed")}
                   className="flex gap-6"
                 >
                   <div className="flex items-center space-x-2">
@@ -410,7 +410,7 @@ export default function DiscountsPage() {
 
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold">Aplicable a</Label>
-                <Select value={applicableTo} onValueChange={setApplicableTo}>
+                <Select value={applicableTo} onValueChange={(v) => v && setApplicableTo(v)}>
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="Seleccionar alcance" />
                   </SelectTrigger>

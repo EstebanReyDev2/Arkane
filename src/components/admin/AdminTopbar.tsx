@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, Plus, Search } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
@@ -75,7 +76,7 @@ export function AdminTopbar() {
       <div className="flex items-center gap-4">
         {/* Notification Bell */}
         <Popover>
-          <PopoverTrigger asChild>
+          <PopoverTrigger render={<Slot />}>
             <button className="relative p-2 text-[#71717A] hover:text-[#18181B] hover:bg-[#F4F4F5] rounded-md transition-all">
               <Bell size={20} strokeWidth={1.5} />
               <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#EF4444] rounded-full border-2 border-white" />

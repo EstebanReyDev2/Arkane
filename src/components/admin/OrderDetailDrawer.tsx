@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import { 
   Sheet, 
   SheetContent, 
@@ -88,7 +89,7 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
               {statusInfo.label}
             </Badge>
           </div>
-          <SheetClose asChild>
+          <SheetClose render={<Slot />}>
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
               <X size={18} />
             </Button>
@@ -107,6 +108,7 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
                       src={item.image || 'https://picsum.photos/seed/product/200/300'} 
                       alt={item.name} 
                       fill 
+                      sizes="64px"
                       className="object-cover"
                       referrerPolicy="no-referrer"
                     />
@@ -131,15 +133,15 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
                 <span>Subtotal</span>
                 <span className="text-[#18181B]">${(order.total - (order.shippingCost || 0)).toLocaleString('es-AR')}</span>
               </div>
-              {order.discount > 0 && (
+              {(order.discount ?? 0) > 0 && (
                 <div className="flex justify-between text-[13px] text-[#DC2626]">
                   <span>Descuento</span>
-                  <span>-${order.discount.toLocaleString('es-AR')}</span>
+                  <span>-${(order.discount ?? 0).toLocaleString('es-AR')}</span>
                 </div>
               )}
               <div className="flex justify-between text-[13px] text-[#71717A]">
                 <span>Envío</span>
-                <span className="text-[#18181B]">{order.shippingCost > 0 ? `$${order.shippingCost.toLocaleString('es-AR')}` : 'GRATIS'}</span>
+                <span className="text-[#18181B]">{(order.shippingCost ?? 0) > 0 ? `$${(order.shippingCost ?? 0).toLocaleString('es-AR')}` : 'GRATIS'}</span>
               </div>
               <div className="flex justify-between text-[16px] font-bold text-[#18181B] pt-2">
                 <span>Total</span>

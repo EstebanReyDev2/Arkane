@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -102,12 +103,12 @@ export default function AdminProductsPage() {
   }
 
   const filteredData = useMemo(() => {
-    return products.filter(product => {
+    return products.filter((product: Product) => {
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
       const matchesStatus = statusFilter === 'all' || 
         (statusFilter === 'active' ? product.isActive : !product.isActive);
       
-      const totalStock = product.variants?.reduce((acc, v) => acc + v.stock, 0) || 0;
+      const totalStock = product.variants?.reduce((acc: number, v: any) => acc + v.stock, 0) || 0;
       const matchesStock = stockFilter === 'all' || 
         (stockFilter === 'normal' && totalStock >= 10) ||
         (stockFilter === 'low' && totalStock > 0 && totalStock < 10) ||
@@ -341,7 +342,7 @@ export default function AdminProductsPage() {
               </Link>
             </Button>
             <Dialog>
-              <DialogTrigger asChild>
+              <DialogTrigger render={<Slot />}>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-[#71717A] hover:text-[#DC2626]">
                   <Trash2 size={16} />
                 </Button>
@@ -354,10 +355,10 @@ export default function AdminProductsPage() {
                   </DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
-                  <DialogClose asChild>
+                  <DialogClose render={<Slot />}>
                     <Button variant="outline">Cancelar</Button>
                   </DialogClose>
-                  <DialogClose asChild>
+                  <DialogClose render={<Slot />}>
                     <Button variant="destructive" onClick={() => handleDeleteProduct(product.id)}>Eliminar</Button>
                   </DialogClose>
                 </DialogFooter>
@@ -416,7 +417,7 @@ export default function AdminProductsPage() {
           </div>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger render={<Slot />}>
               <Button variant="outline" className="h-9 text-[13px] gap-2 border-[#E4E4E7]">
                 <Filter size={14} />
                 Filtrar
@@ -595,7 +596,7 @@ export default function AdminProductsPage() {
                 Desactivar todos
               </Button>
               <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <DialogTrigger asChild>
+                <DialogTrigger render={<Slot />}>
                   <Button 
                     variant="ghost" 
                     size="sm" 

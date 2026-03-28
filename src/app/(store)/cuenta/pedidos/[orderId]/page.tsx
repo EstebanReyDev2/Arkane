@@ -174,7 +174,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ orderId:
               {order.items.map((item: any, index: number) => (
                 <div key={index} className="p-6 flex flex-col sm:flex-row gap-6">
                   <div className="relative w-24 aspect-[3/4] bg-[#F2EDE8] border border-[#E8E4E0] flex-shrink-0">
-                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                    <Image src={item.image} alt={item.name} fill sizes="96px" className="object-cover" />
                   </div>
                   <div className="flex-grow flex flex-col justify-between">
                     <div>

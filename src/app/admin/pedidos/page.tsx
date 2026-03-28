@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import { 
   createColumnHelper, 
   flexRender, 
@@ -112,19 +113,19 @@ export default function OrdersPage() {
     let result = orders;
     
     if (activeTab !== 'all') {
-      result = result.filter(order => order.status === activeTab);
+      result = result.filter((order: Order) => order.status === activeTab);
     }
 
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      result = result.filter(order => order.createdAt.toDate() >= start);
+      result = result.filter((order: Order) => order.createdAt.toDate() >= start);
     }
 
     if (endDate) {
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      result = result.filter(order => order.createdAt.toDate() <= end);
+      result = result.filter((order: Order) => order.createdAt.toDate() <= end);
     }
 
     return result;
@@ -172,7 +173,7 @@ export default function OrdersPage() {
         return (
           <TooltipProvider>
             <Tooltip>
-              <TooltipTrigger asChild>
+              <TooltipTrigger render={<Slot />}>
                 <span className="text-[13px] text-[#18181B] cursor-default">
                   {format(date, 'dd MMM yyyy · HH:mm', { locale: es })}
                 </span>
@@ -251,7 +252,7 @@ export default function OrdersPage() {
         const config = STATUS_CONFIG[status];
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger render={<Slot />}>
               <Badge 
                 className={cn(
                   "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all hover:opacity-80",

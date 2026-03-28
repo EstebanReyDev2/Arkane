@@ -218,7 +218,7 @@ export default function CheckoutPage() {
                   {items.map((item) => (
                     <div key={`${item.productId}-${item.variantId}`} className="flex gap-4">
                       <div className="relative w-16 aspect-[3/4] bg-white border border-[#E8E4E0] rounded-[2px] overflow-hidden">
-                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
                         <div className="absolute -top-2 -right-2 bg-[#8C8680] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center z-10">
                           {item.quantity}
                         </div>

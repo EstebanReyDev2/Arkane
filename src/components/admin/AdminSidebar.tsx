@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react';
+import { Slot } from '@radix-ui/react-slot';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { 
@@ -154,7 +155,7 @@ export function AdminSidebar() {
       {/* BOTTOM SECTION */}
       <div className="p-4 border-top border-[#1C1C1C]">
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger render={<Slot />}>
             <button className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-white/5 transition-all group">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-[#C4714A] flex items-center justify-center text-white text-sm font-bold">

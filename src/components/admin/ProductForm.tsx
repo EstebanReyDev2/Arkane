@@ -149,7 +149,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     formState: { errors, isValid, isDirty },
     trigger
   } = useForm<ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema) as any,
     defaultValues: product ? {
       ...product,
       salePrice: product.salePrice || null,
@@ -332,7 +332,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   };
 
   const onError = (errors: any) => {
-    console.log('Form errors:', errors);
+
     // Switch to tab with errors
     if (errors.name || errors.slug || errors.description || errors.basePrice || errors.salePrice || errors.category || errors.subcategory || errors.attributes) {
       setActiveTab('general');
@@ -473,7 +473,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                   <div className="space-y-2">
                     <Label htmlFor="fit" className="text-[13px] font-semibold">Fit *</Label>
                     <Select 
-                      onValueChange={(v) => setValue('attributes.fit', v)} 
+                      onValueChange={(v) => v && setValue('attributes.fit', v as string)} 
                       defaultValue={watch('attributes.fit')}
                     >
                       <SelectTrigger className={cn(errors.attributes?.fit && "border-red-500")}>
@@ -555,7 +555,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                   <div className="space-y-2">
                     <Label className="text-[13px] font-semibold">Subcategoría *</Label>
                     <Select 
-                      onValueChange={(v) => setValue('subcategory', v)} 
+                      onValueChange={(v) => v && setValue('subcategory', v as string)} 
                       value={watch('subcategory')}
                       disabled={!watchCategory}
                     >
@@ -975,7 +975,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                     {imageFields.map((field, index) => (
                       <div key={field.id} className="flex items-center gap-3 p-2 border border-[#E4E4E7] rounded-md">
                         <div className="relative w-10 h-10 rounded overflow-hidden flex-shrink-0">
-                          <Image src={watch(`images.${index}.url`)} alt="" fill className="object-cover" />
+                          <Image src={watch(`images.${index}.url`)} alt="" fill sizes="40px" className="object-cover" />
                         </div>
                         <Input 
                           {...register(`images.${index}.alt`)} 

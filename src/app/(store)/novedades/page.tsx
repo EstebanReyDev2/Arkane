@@ -1,18 +1,19 @@
-'use client';
-
-import { useState } from 'react';
-import { useProducts } from '@/src/lib/firebase/products';
+import { getProducts } from '@/src/lib/firebase/products';
 import { ProductGrid } from '@/src/components/product/ProductGrid';
 import Link from 'next/link';
+import { NovedadesFilters } from '@/src/components/novedades/NovedadesFilters';
 
-const TABS = ['VER TODO', 'VESTIDOS', 'SASTRERÍA', 'PUNTO', 'ACCESORIOS'];
+export const revalidate = 60; // ISR cache de 1 min
 
-export default function NovedadesPage() {
-  const [activeTab, setActiveTab] = useState('VER TODO');
+export default async function NovedadesPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | undefined }> 
+}) {
+  const params = await searchParams;
+  const filterSubcategory = params.subcategory;
   
-  const filterSubcategory = activeTab === 'VER TODO' ? undefined : activeTab.toLowerCase();
-  
-  const { data: products = [], isLoading, error } = useProducts({ 
+  const products = await getProducts({ 
     tags: ['new'],
     subcategory: filterSubcategory
   });
@@ -38,36 +39,13 @@ export default function NovedadesPage() {
         </div>
 
         {/* Filters & Count */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#E8E4E0] mb-10 pb-4 gap-6">
-          <div className="flex overflow-x-auto hide-scrollbar gap-8">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`text-xs font-label uppercase tracking-widest whitespace-nowrap pb-4 -mb-4 transition-colors ${
-                  activeTab === tab 
-                    ? 'text-[#0D0D0D] border-b-2 border-[#0D0D0D]' 
-                    : 'text-[#8C8680] hover:text-[#0D0D0D]'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="text-sm text-[#8C8680] font-body whitespace-nowrap">
-            {isLoading ? 'Cargando...' : `${products.length} productos`}
-          </div>
-        </div>
+        <NovedadesFilters activeTab={filterSubcategory || 'VER TODO'} totalProducts={products.length} />
 
         {/* Product Grid */}
-        {error ? (
-          <div className="py-20 text-center text-red-500 font-body">Error al cargar los productos.</div>
-        ) : (
-          <ProductGrid products={products.slice(0, 8)} isLoading={isLoading} />
-        )}
+        <ProductGrid products={products.slice(0, 8)} isLoading={false} />
 
         {/* Load More */}
-        {!isLoading && products.length > 8 && (
+        {products.length > 8 && (
           <div className="mt-16 flex justify-center">
             <button className="border border-[#C4714A] text-[#C4714A] bg-transparent h-12 px-8 text-xs font-medium uppercase tracking-widest rounded-[2px] hover:bg-[#C4714A] hover:text-white transition-all duration-300">
               Cargar Más
@@ -88,9 +66,9 @@ export default function NovedadesPage() {
       </div>
       
       {/* Remaining Products if any */}
-      {!isLoading && products.length > 8 && (
+      {products.length > 8 && (
         <div className="max-w-[1440px] mx-auto px-6 md:px-12 py-24">
-          <ProductGrid products={products.slice(8)} isLoading={isLoading} />
+          <ProductGrid products={products.slice(8)} isLoading={false} />
         </div>
       )}
     </div>

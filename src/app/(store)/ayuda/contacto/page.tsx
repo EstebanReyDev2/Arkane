@@ -10,8 +10,8 @@ import { Mail, Phone, Clock, Instagram, Twitter, Facebook } from 'lucide-react';
 const contactSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Email inválido'),
-  asunto: z.enum(['Pedido', 'Envío', 'Devolución', 'Producto', 'Otro'], {
-    errorMap: () => ({ message: 'Selecciona un asunto válido' })
+  asunto: z.enum(['Pedido', 'Envío', 'Devolución', 'Producto', 'Otro'] as const, {
+    message: 'Selecciona un asunto válido'
   }),
   mensaje: z.string().min(10, 'El mensaje debe tener al menos 10 caracteres')
 });

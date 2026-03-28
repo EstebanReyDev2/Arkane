@@ -230,7 +230,7 @@ export default function ConfigurationPage() {
                   <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed border-[#E4E4E7] rounded-xl bg-[#F9F9FB]">
                     <div className="relative w-32 h-12 bg-white rounded border border-[#E4E4E7] flex items-center justify-center overflow-hidden">
                       {config.logo ? (
-                        <Image src={config.logo} alt="Logo" fill className="object-contain p-2" />
+                        <Image src={config.logo} alt="Logo" fill sizes="128px" className="object-contain p-2" />
                       ) : (
                         <span className="text-[14px] font-black italic tracking-tighter">NEXUS</span>
                       )}

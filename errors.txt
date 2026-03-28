@@ -1,0 +1,64 @@
+﻿src/app/(store)/ayuda/contacto/page.tsx(13,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(values: readonly ["Pedido", "Env├¡o", "Devoluci├│n", "Producto", "Otro"], params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Object literal may only specify known properties, and 'errorMap' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(entries: Readonly<Record<string, EnumValue>>, params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidValue<unknown>> | undefined; message?: string | undefined; } | undefined): ZodEnum<...>', gave the following error.
+    Argument of type 'string[]' is not assignable to parameter of type 'Readonly<Record<string, EnumValue>>'.
+      Index signature for type 'string' is missing in type 'string[]'.
+src/app/admin/descuentos/page.tsx(413,46): error TS2322: Type 'Dispatch<SetStateAction<string>>' is not assignable to type '(value: string | null, eventDetails: SelectRootChangeEventDetails) => void'.
+  Types of parameters 'value' and 'value' are incompatible.
+    Type 'string | null' is not assignable to type 'SetStateAction<string>'.
+      Type 'null' is not assignable to type 'SetStateAction<string>'.
+src/app/admin/pedidos/page.tsx(175,31): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/app/admin/pedidos/page.tsx(254,34): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/app/admin/productos/page.tsx(344,30): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/app/admin/productos/page.tsx(357,32): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & DialogCloseProps'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogCloseProps'.
+src/app/admin/productos/page.tsx(360,32): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & DialogCloseProps'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogCloseProps'.
+src/app/admin/productos/page.tsx(419,34): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/app/admin/productos/page.tsx(598,32): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/components/admin/AdminSidebar.tsx(157,32): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & Props<unknown>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & Props<unknown>'.
+src/components/admin/AdminTopbar.tsx(78,27): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & NativeButtonProps & Omit<WithBaseUIEvent<DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>>, "className" | ... 2 more ... | "color"> & { ...; } & { ...; }'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & NativeButtonProps & Omit<WithBaseUIEvent<DetailedHTMLProps<ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>>, "className" | ... 2 more ... | "color"> & { ...; } & { ...; }'.
+src/components/admin/OrderDetailDrawer.tsx(91,23): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & DialogCloseProps'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & DialogCloseProps'.
+src/components/admin/OrderDetailDrawer.tsx(133,74): error TS2339: Property 'shippingCost' does not exist on type 'Order'.
+src/components/admin/OrderDetailDrawer.tsx(135,22): error TS2339: Property 'discount' does not exist on type 'Order'.
+src/components/admin/OrderDetailDrawer.tsx(138,34): error TS2339: Property 'discount' does not exist on type 'Order'.
+src/components/admin/OrderDetailDrawer.tsx(143,57): error TS2339: Property 'shippingCost' does not exist on type 'Order'.
+src/components/admin/OrderDetailDrawer.tsx(143,86): error TS2339: Property 'shippingCost' does not exist on type 'Order'.
+src/components/admin/OrderDetailDrawer.tsx(162,71): error TS2551: Property 'customerPhone' does not exist on type 'Order'. Did you mean 'customerName'?
+src/components/admin/ProductForm.tsx(152,5): error TS2322: Type 'Resolver<{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; attributes: { material: string; fit: string; collection: string; care?: string[] | undefined; }; ... 5 more ...; vertical?: string | undefined; }, any, { ...; }>' is not assignable to type 'Resolver<{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vertical: s...'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vert...' is not assignable to type 'ResolverOptions<{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; attributes: { material: string; fit: string; collection: string; care?: string[] | undefined; }; ... 5 more ...; vertical?: string | undefined; }>'.
+      Type 'boolean | undefined' is not assignable to type 'boolean'.
+        Type 'undefined' is not assignable to type 'boolean'.
+src/components/admin/ProductForm.tsx(354,34): error TS2345: Argument of type '(data: ProductFormValues) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vertical: string; sa...'.
+      Type 'FieldValues' is missing the following properties from type '{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vertical: string; sa...': name, slug, description, basePrice, and 8 more.
+src/components/admin/ProductForm.tsx(476,72): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/admin/ProductForm.tsx(558,69): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/components/admin/ProductForm.tsx(1092,28): error TS2345: Argument of type '(data: ProductFormValues) => Promise<void>' is not assignable to parameter of type 'SubmitHandler<TFieldValues>'.
+  Types of parameters 'data' and 'data' are incompatible.
+    Type 'TFieldValues' is not assignable to type '{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vertical: string; sa...'.
+      Type 'FieldValues' is missing the following properties from type '{ name: string; slug: string; description: string; basePrice: number; category: "mujer" | "hombre" | "accesorios"; subcategory: string; isActive: boolean; tags: string[]; attributes: { material: string; care: string[]; fit: string; collection: string; }; variants: { ...; }[]; images: { ...; }[]; vertical: string; sa...': name, slug, description, basePrice, and 8 more.
+src/components/search/SearchModal.tsx(100,11): error TS2322: Type '{ hidden: { opacity: number; scale: number; }; visible: { opacity: number; scale: number; transition: { duration: number; ease: string; }; }; exit: { opacity: number; scale: number; transition: { duration: number; ease: string; }; }; }' is not assignable to type 'Variants'.
+  Property 'visible' is incompatible with index signature.
+    Type '{ opacity: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'Variant'.
+      Type '{ opacity: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type 'TargetAndTransition'.
+        Type '{ opacity: number; scale: number; transition: { duration: number; ease: string; }; }' is not assignable to type '{ transition?: Transition<any> | undefined; transitionEnd?: ResolvedValues$1 | undefined; }'.
+          Types of property 'transition' are incompatible.
+            Type '{ duration: number; ease: string; }' is not assignable to type 'Transition<any> | undefined'.
+              Type '{ duration: number; ease: string; }' is not assignable to type 'TransitionWithValueOverrides<any>'.
+                Type '{ duration: number; ease: string; }' is not assignable to type 'ValueAnimationTransition<any>'.
+                  Types of property 'ease' are incompatible.
+                    Type 'string' is not assignable to type 'Easing | Easing[] | undefined'.

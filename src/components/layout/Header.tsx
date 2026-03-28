@@ -81,7 +81,7 @@ export function Header() {
             </nav>
 
             <div className="flex items-center gap-4">
-              {user ? (
+              {mounted && user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger className="outline-none">
                     <div className="w-8 h-8 bg-[#0D0D0D] text-white rounded-full flex items-center justify-center text-xs font-display hover:opacity-80 transition-opacity">

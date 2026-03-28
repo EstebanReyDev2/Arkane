@@ -1,16 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 
 export function AnnouncementBar() {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIsVisible(true);
-  }, []);
+  const [isVisible, setIsVisible] = useState(true);
 
   return (
     <AnimatePresence>

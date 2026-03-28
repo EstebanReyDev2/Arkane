@@ -1,18 +1,21 @@
-'use client';
-
-import { useState } from 'react';
-import { useProducts } from '@/src/lib/firebase/products';
+import { getProducts } from '@/src/lib/firebase/products';
 import { ProductGrid } from '@/src/components/product/ProductGrid';
 import Link from 'next/link';
+import { SubcategoryTabs } from '@/src/components/store/SubcategoryTabs';
+
+export const revalidate = 60; // ISR cache de 1 min
 
 const TABS = ['VER TODO', 'VESTIDOS', 'SASTRERÍA', 'PUNTO', 'ACCESORIOS'];
 
-export default function MujerPage() {
-  const [activeTab, setActiveTab] = useState('VER TODO');
+export default async function MujerPage({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ [key: string]: string | undefined }> 
+}) {
+  const params = await searchParams;
+  const filterSubcategory = params.subcategory;
   
-  const filterSubcategory = activeTab === 'VER TODO' ? undefined : activeTab.toLowerCase();
-  
-  const { data: products = [], isLoading, error } = useProducts({ 
+  const products = await getProducts({ 
     category: 'mujer',
     subcategory: filterSubcategory
   });
@@ -38,33 +41,15 @@ export default function MujerPage() {
         </div>
 
         {/* Filters & Count */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#E8E4E0] mb-10 pb-4 gap-6">
-          <div className="flex overflow-x-auto hide-scrollbar gap-8">
-            {TABS.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`text-xs font-label uppercase tracking-widest whitespace-nowrap pb-4 -mb-4 transition-colors ${
-                  activeTab === tab 
-                    ? 'text-[#0D0D0D] border-b-2 border-[#0D0D0D]' 
-                    : 'text-[#8C8680] hover:text-[#0D0D0D]'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-          <div className="text-sm text-[#8C8680] font-body whitespace-nowrap">
-            {isLoading ? 'Cargando...' : `${products.length} productos`}
-          </div>
-        </div>
+        <SubcategoryTabs 
+          basePath="/mujer" 
+          tabs={TABS} 
+          activeTab={filterSubcategory} 
+          totalProducts={products.length} 
+        />
 
         {/* Product Grid */}
-        {error ? (
-          <div className="py-20 text-center text-red-500 font-body">Error al cargar los productos.</div>
-        ) : (
-          <ProductGrid products={products} isLoading={isLoading} />
-        )}
+        <ProductGrid products={products} isLoading={false} />
       </div>
     </div>
   );

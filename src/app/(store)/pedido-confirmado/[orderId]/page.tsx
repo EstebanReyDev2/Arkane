@@ -123,7 +123,7 @@ export default function OrderConfirmationPage({ params }: { params: Promise<{ or
               {order.items.map((item: any, index: number) => (
                 <div key={index} className="flex gap-4">
                   <div className="relative w-16 aspect-[3/4] bg-[#F2EDE8] flex-shrink-0">
-                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                    <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
                   </div>
                   <div className="flex-grow flex flex-col justify-center">
                     <h4 className="text-sm font-medium text-[#0D0D0D] font-body">{item.name}</h4>

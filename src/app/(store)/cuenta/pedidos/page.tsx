@@ -128,7 +128,7 @@ export default function OrdersPage() {
                 <div className="p-4 md:p-6 flex gap-4 overflow-x-auto custom-scrollbar">
                   {order.items.slice(0, 2).map((item: any, index: number) => (
                     <div key={index} className="relative w-20 aspect-[3/4] bg-[#F2EDE8] border border-[#E8E4E0] flex-shrink-0">
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
+                      <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
                     </div>
                   ))}
                   {order.items.length > 2 && (

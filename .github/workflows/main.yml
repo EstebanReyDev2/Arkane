@@ -1,0 +1,40 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20' # Using LTS
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Type Check (TypeScript)
+        run: npx tsc --noEmit
+
+      - name: Linting
+        run: npm run lint
+
+      - name: Build Next.js
+        run: npm run build
+        env:
+          # Estas variables deben ser dadas de alta en GitHub Secrets
+          # NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          # y todas las requeridas para transpilar
+          NODE_ENV: production

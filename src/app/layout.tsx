@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
-    <html lang="en" className={cn(inter.variable, playfair.variable, spaceGrotesk.variable, "font-sans", geist.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn(inter.variable, playfair.variable, spaceGrotesk.variable, "font-sans", geist.variable)}>
       <body className="bg-[var(--bg-primary)] text-[var(--color-black)] font-body min-h-screen flex flex-col" suppressHydrationWarning>
         <SafeConsole />
         <AuthProvider>
