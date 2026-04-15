@@ -4,9 +4,12 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      "src/**",
+      "public/**"
     ],
     "frameworksBackend": {
+      "framework": "nextjs",
       "region": "us-central1"
     }
   },
