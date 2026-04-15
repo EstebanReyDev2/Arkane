@@ -133,6 +133,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [isDragActive, setIsDragActive] = useState(false);
   
   // Local state for variant builder
   const [colors, setColors] = useState<{ name: string; hex: string }[]>([]);
@@ -312,8 +314,51 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     }
   };
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Solo setear false si salimos del div completamente
+    if (e.currentTarget === e.target) {
+      setIsDragActive(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Crear un evento sintético para reutilizar handleImageUpload
+      const input = document.getElementById('image-upload') as HTMLInputElement;
+      if (input) {
+        input.files = files;
+        const event = new Event('change', { bubbles: true }) as any;
+        event.target = input;
+        handleImageUpload(event);
+      }
+    }
+  };
+
   const onSubmit = async (data: ProductFormValues) => {
+    setShowConfirmDialog(true);
+  };
+
+  const handleConfirmSave = async (data: ProductFormValues) => {
     setIsSaving(true);
+    setShowConfirmDialog(false);
     try {
       if (product) {
         await updateProduct(product.id, data as any);
@@ -883,10 +928,15 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             <CardContent className="p-6 space-y-6">
               <div 
                 className={cn(
-                  "border-2 border-dashed border-[#E4E4E7] rounded-lg bg-[#F9F9F9] h-40 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-[#F4F4F5] transition-all relative",
+                  "border-2 border-dashed rounded-lg bg-[#F9F9F9] h-40 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all relative",
+                  isDragActive ? "border-[#0D0D0D] bg-[#F0F0F0]" : "border-[#E4E4E7] hover:bg-[#F4F4F5]",
                   uploading && "opacity-50 pointer-events-none"
                 )}
                 onClick={() => document.getElementById('image-upload')?.click()}
+                onDragEnter={handleDragEnter}
+                onDragLeave={handleDragLeave}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
               >
                 <input 
                   id="image-upload" 
@@ -896,7 +946,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                   className="hidden" 
                   onChange={handleImageUpload}
                 />
-                <UploadCloud size={48} className="text-[#A1A1AA]" />
+                <UploadCloud size={48} className={cn("transition-colors", isDragActive ? "text-[#0D0D0D]" : "text-[#A1A1AA]")} />
                 <div className="text-center">
                   <p className="text-[14px] font-medium text-[#18181B]">Arrastrá imágenes aquí</p>
                   <p className="text-[12px] text-[#71717A]">o hacé clic para seleccionar</p>
@@ -1108,6 +1158,100 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           </Button>
         </div>
       </div>
+
+      {/* CONFIRMATION DIALOG */}
+      <AnimatePresence>
+        {showConfirmDialog && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setShowConfirmDialog(false)}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-lg max-w-lg w-full mx-4 border border-[#E4E4E7]"
+            >
+              <div className="p-6 border-b border-[#E4E4E7]">
+                <h2 className="text-lg font-bold text-[#18181B]">Confirmar creación de producto</h2>
+                <p className="text-sm text-[#71717A] mt-1">Verifica todos los datos antes de guardar</p>
+              </div>
+
+              <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+                <div className="bg-[#F9F9FB] p-4 rounded-lg space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Nombre:</span>
+                    <span className="font-medium text-[#18181B]">{watchName}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Categoría:</span>
+                    <span className="font-medium text-[#18181B]">{watchCategory} - {watch('subcategory')}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Precio base:</span>
+                    <span className="font-medium text-[#18181B]">${watchBasePrice?.toLocaleString('es-AR')}</span>
+                  </div>
+                  {watchSalePrice && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#71717A]">Precio en oferta:</span>
+                      <span className="font-medium text-[#C4714A]">${watchSalePrice?.toLocaleString('es-AR')} (-{discountPercentage}%)</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Variantes:</span>
+                    <span className="font-medium text-[#18181B]">{watchVariants?.length || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Imágenes:</span>
+                    <span className="font-medium text-[#18181B]">{imageFields.length}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#71717A]">Es activo:</span>
+                    <span className={cn("font-medium text-sm", watch('isActive') ? "text-[#16A34A]" : "text-[#71717A]")}>
+                      {watch('isActive') ? 'Sí' : 'No'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 bg-[#F9F9FB] border-t border-[#E4E4E7] flex gap-3 justify-end rounded-b-lg">
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  className="h-10 px-6 text-sm font-bold uppercase"
+                  onClick={() => setShowConfirmDialog(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  type="button"
+                  className="h-10 px-8 bg-[#0D0D0D] text-white text-sm font-bold uppercase hover:bg-[#333333]"
+                  disabled={isSaving}
+                  onClick={() => {
+                    const state = watch();
+                    handleConfirmSave(state as ProductFormValues);
+                  }}
+                >
+                  {isSaving ? (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Confirmar y guardar'
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </form>
   );
 }

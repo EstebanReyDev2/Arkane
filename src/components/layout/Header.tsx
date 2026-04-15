@@ -16,11 +16,12 @@ import {
   DropdownMenuTrigger,
 } from "@/src/components/ui/dropdown-menu";
 import { SearchModal } from '@/src/components/search/SearchModal';
+import { MobileMenu } from '@/src/components/layout/MobileMenu';
 
 export function Header() {
   const router = useRouter();
   const totalItems = useCartStore((state) => state.totalItems());
-  const { setSearchOpen } = useUiStore();
+  const { setSearchOpen, setMobileMenuOpen } = useUiStore();
   const [mounted, setMounted] = useState(false);
   const { user } = useAuthState();
   const [userData, setUserData] = useState<any>(null);
@@ -48,7 +49,10 @@ export function Header() {
         <div className="flex items-center justify-between h-20 px-6 md:px-12 max-w-[1440px] mx-auto">
           {/* Mobile Menu & Search */}
           <div className="flex items-center gap-4 md:w-1/3">
-            <button className="md:hidden hover:opacity-70 transition-opacity">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden hover:opacity-70 transition-opacity"
+            >
               <Menu size={20} strokeWidth={1.5} color="#0D0D0D" />
             </button>
             <button 
@@ -136,6 +140,7 @@ export function Header() {
           </div>
         </div>
       </header>
+      <MobileMenu />
       <SearchModal />
     </>
   );

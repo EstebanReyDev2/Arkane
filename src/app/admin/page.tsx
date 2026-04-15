@@ -27,7 +27,7 @@ import {
 import { KpiCard } from '@/src/components/admin/KpiCard';
 import { RecentOrdersTable } from '@/src/components/admin/RecentOrdersTable';
 import { AlertsRow } from '@/src/components/admin/AlertsRow';
-import { getDashboardStats, getOrders, DashboardStats, Order } from '@/src/lib/firebase/admin-queries';
+import { getDashboardStats, getOrders, getLowStockProducts, getRecentActivity, DashboardStats, Order, LowStockProduct, ActivityEvent } from '@/src/lib/firebase/admin-queries';
 import { Skeleton } from '@/src/components/ui/skeleton';
 
 const COLORS = ['#0D0D0D', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
@@ -35,16 +35,22 @@ const COLORS = ['#0D0D0D', '#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
+  const [lowStockItems, setLowStockItems] = useState<LowStockProduct[]>([]);
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [statsData, ordersData] = await Promise.all([
+        const [statsData, ordersData, lowStockData, activityData] = await Promise.all([
           getDashboardStats(),
-          getOrders({ limit: 5 })
+          getOrders({ limit: 5 }),
+          getLowStockProducts(5),
+          getRecentActivity(24)
         ]);
         setStats(statsData);
+        setLowStockItems(lowStockData);
+        setActivityEvents(activityData);
         
         // Format orders for the table
         const formattedOrders = ordersData.map(order => ({
@@ -117,8 +123,8 @@ export default function AdminDashboard() {
         <KpiCard 
           title="Ventas del mes" 
           value={`$${stats?.monthlySales.toLocaleString('es-AR')}`} 
-          change="12.5%" 
-          changeType="positive"
+          change={`${stats?.salesPercentageChange || 0}%`} 
+          changeType={stats?.salesPercentageChange && stats.salesPercentageChange > 0 ? "positive" : stats?.salesPercentageChange && stats.salesPercentageChange < 0 ? "negative" : "neutral"}
           icon={DollarSign}
           subtext="vs. mes anterior"
           iconBg="bg-[#F0FDF4]"
@@ -256,17 +262,12 @@ export default function AdminDashboard() {
 
       {/* ALERTS & ACTIVITY */}
       <AlertsRow 
-        lowStock={[
-          { id: '1', name: 'Trench Coat Camel', stock: 2 },
-          { id: '2', name: 'Remera Básica Blanca', stock: 4 },
-          { id: '3', name: 'Pantalón Sastrero Negro', stock: 1 },
-        ]} 
-        activity={[
-          { id: '1', type: 'order', text: 'Nuevo pedido #ARK-F829 de Esteban Rey', time: 'hace 5 minutos' },
-          { id: '2', type: 'user', text: 'Nuevo cliente registrado: Maria Garcia', time: 'hace 2 horas' },
-          { id: '3', type: 'stock', text: 'Stock bajo: Trench Coat Camel (2 unidades)', time: 'hace 4 horas' },
-          { id: '4', type: 'order', text: 'Pedido #ARK-A291 marcado como enviado', time: 'hace 6 horas' },
-        ]}
+        lowStock={lowStockItems.map(item => ({
+          id: item.id,
+          name: item.name,
+          stock: item.stock
+        }))} 
+        activity={activityEvents}
       />
     </div>
   );

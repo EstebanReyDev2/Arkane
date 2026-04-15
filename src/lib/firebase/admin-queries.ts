@@ -48,6 +48,30 @@ export interface DashboardStats {
   newCustomers: number;
   salesByDay: { date: string; revenue: number }[];
   salesByCategory: { category: string; count: number }[];
+  salesPercentageChange: number;
+  lastMonthSales: number;
+}
+
+export interface LowStockProduct {
+  id: string;
+  name: string;
+  sku?: string;
+  image?: string;
+  stock: number;
+  variants: {
+    id: string;
+    color: string;
+    size: string;
+    stock: number;
+  }[];
+}
+
+export interface ActivityEvent {
+  id: string;
+  type: 'order' | 'user' | 'stock' | 'product';
+  text: string;
+  time: string;
+  timestamp: number;
 }
 
 export interface OrderFilters {
@@ -61,22 +85,70 @@ export interface OrderFilters {
 export async function getDashboardStats(): Promise<DashboardStats> {
   try {
     const now = new Date();
-    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
     
-    // Monthly Sales & Orders
-    const ordersQuery = query(
+    // Current month boundaries
+    const firstDayOfCurrentMonth = new Date(currentYear, currentMonth, 1);
+    const lastDayOfCurrentMonth = new Date(currentYear, currentMonth + 1, 0);
+    
+    // Previous month boundaries
+    const firstDayOfPreviousMonth = new Date(currentYear, currentMonth - 1, 1);
+    const lastDayOfPreviousMonth = new Date(currentYear, currentMonth, 0);
+    
+    // Current Month Sales & Orders
+    const currentMonthOrdersQuery = query(
       collection(db, 'orders'),
-      where('createdAt', '>=', firstDayOfMonth),
+      where('createdAt', '>=', Timestamp.fromDate(firstDayOfCurrentMonth)),
+      where('createdAt', '<=', Timestamp.fromDate(lastDayOfCurrentMonth)),
       where('status', '!=', 'cancelled')
     );
-    const ordersSnap = await getDocs(ordersQuery);
+    const currentMonthOrdersSnap = await getDocs(currentMonthOrdersQuery);
     
     let monthlySales = 0;
-    let monthlyOrders = ordersSnap.size;
+    let monthlyOrders = currentMonthOrdersSnap.size;
+    const salesByDayMap: { [key: string]: number } = {};
+    const salesByCategoryMap: { [key: string]: number } = {};
+    const ordersData: any[] = [];
     
-    ordersSnap.forEach(doc => {
-      monthlySales += doc.data().total || 0;
+    // Process current month orders
+    currentMonthOrdersSnap.forEach(doc => {
+      const order = doc.data();
+      monthlySales += order.total || 0;
+      ordersData.push(order);
+      
+      // Group by day
+      const orderDate = order.createdAt?.toDate?.() || new Date();
+      const dayKey = orderDate.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
+      salesByDayMap[dayKey] = (salesByDayMap[dayKey] || 0) + (order.total || 0);
+      
+      // Group by category
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach((item: any) => {
+          const category = item.category || 'Otros';
+          salesByCategoryMap[category] = (salesByCategoryMap[category] || 0) + 1;
+        });
+      }
     });
+
+    // Previous month sales for comparison
+    const previousMonthOrdersQuery = query(
+      collection(db, 'orders'),
+      where('createdAt', '>=', Timestamp.fromDate(firstDayOfPreviousMonth)),
+      where('createdAt', '<=', Timestamp.fromDate(lastDayOfPreviousMonth)),
+      where('status', '!=', 'cancelled')
+    );
+    const previousMonthOrdersSnap = await getDocs(previousMonthOrdersQuery);
+    
+    let lastMonthSales = 0;
+    previousMonthOrdersSnap.forEach(doc => {
+      lastMonthSales += doc.data().total || 0;
+    });
+    
+    // Calculate percentage change
+    const salesPercentageChange = lastMonthSales > 0 
+      ? Math.round(((monthlySales - lastMonthSales) / lastMonthSales) * 100)
+      : monthlySales > 0 ? 100 : 0;
 
     // Pending Orders
     const pendingQuery = query(
@@ -105,28 +177,37 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     // New Customers
     const customersQuery = query(
       collection(db, 'users'),
-      where('createdAt', '>=', firstDayOfMonth),
+      where('createdAt', '>=', Timestamp.fromDate(firstDayOfCurrentMonth)),
       where('role', '==', 'customer')
     );
     const customersSnap = await getDocs(customersQuery);
     const newCustomers = customersSnap.size;
 
-    // Sales by Day (Mock for now, would be grouped from orders)
+    // Format salesByDay for last 30 days
     const salesByDay = Array.from({ length: 30 }, (_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (29 - i));
+      const dayKey = date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' });
       return {
-        date: date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }),
-        revenue: Math.floor(Math.random() * 50000) + 10000
+        date: dayKey,
+        revenue: salesByDayMap[dayKey] || 0
       };
     });
 
-    // Sales by Category
-    const salesByCategory = [
-      { category: 'Mujer', count: 45 },
-      { category: 'Hombre', count: 35 },
-      { category: 'Accesorios', count: 20 }
-    ];
+    // Format salesByCategory
+    const salesByCategory = Object.entries(salesByCategoryMap).map(([category, count]) => ({
+      category: category.charAt(0).toUpperCase() + category.slice(1),
+      count: count as number
+    })).sort((a, b) => b.count - a.count);
+
+    // If no category data, add defaults to avoid empty chart
+    if (salesByCategory.length === 0) {
+      salesByCategory.push(
+        { category: 'Mujer', count: 0 },
+        { category: 'Hombre', count: 0 },
+        { category: 'Accesorios', count: 0 }
+      );
+    }
 
     return {
       monthlySales,
@@ -136,7 +217,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       lowStockProducts,
       newCustomers,
       salesByDay,
-      salesByCategory
+      salesByCategory,
+      salesPercentageChange,
+      lastMonthSales
     };
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
@@ -268,6 +351,168 @@ export async function deleteProduct(id: string): Promise<void> {
     console.error('Error deleting product:', error);
     throw error;
   }
+}
+
+export async function getLowStockProducts(threshold: number = 5): Promise<LowStockProduct[]> {
+  try {
+    const productsQuery = query(
+      collection(db, 'products'),
+      where('isActive', '==', true)
+    );
+    const productsSnap = await getDocs(productsQuery);
+    const lowStockProducts: LowStockProduct[] = [];
+
+    productsSnap.forEach(doc => {
+      const product = doc.data() as Product;
+      
+      if (product.variants && Array.isArray(product.variants)) {
+        // Find variants with low stock
+        const lowStockVariants = product.variants.filter(v => v.stock < threshold);
+        
+        if (lowStockVariants.length > 0) {
+          // Calculate total stock
+          const totalStock = product.variants.reduce((sum, v) => sum + (v.stock || 0), 0);
+          
+          lowStockProducts.push({
+            id: doc.id,
+            name: product.name,
+            sku: product.sku || `ARK-${doc.id.slice(0, 4).toUpperCase()}`,
+            image: product.images?.[0]?.url || '',
+            stock: totalStock,
+            variants: lowStockVariants.map(v => ({
+              id: v.id,
+              color: v.color,
+              size: v.size,
+              stock: v.stock
+            }))
+          });
+        }
+      }
+    });
+
+    // Sort by total stock (ascending) - most critical first
+    return lowStockProducts.sort((a, b) => a.stock - b.stock);
+  } catch (error) {
+    console.error('Error fetching low stock products:', error);
+    return [];
+  }
+}
+
+export async function getRecentActivity(hours: number = 24): Promise<ActivityEvent[]> {
+  try {
+    const events: ActivityEvent[] = [];
+    const now = new Date();
+    const timeThreshold = new Date(now.getTime() - hours * 60 * 60 * 1000);
+
+    // 1. Recent Orders
+    const recentOrdersQuery = query(
+      collection(db, 'orders'),
+      where('createdAt', '>=', Timestamp.fromDate(timeThreshold)),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+    const recentOrdersSnap = await getDocs(recentOrdersQuery);
+    
+    recentOrdersSnap.forEach(doc => {
+      const order = doc.data();
+      const orderDate = order.createdAt?.toDate?.() || new Date();
+      const timeAgo = getTimeAgo(orderDate);
+      
+      events.push({
+        id: `order-${doc.id}`,
+        type: 'order',
+        text: `Nuevo pedido #ARK-${doc.id.slice(0, 4).toUpperCase()} de ${order.customerName || 'Cliente'}`,
+        time: timeAgo,
+        timestamp: orderDate.getTime()
+      });
+    });
+
+    // 2. Recent New Customers
+    const newCustomersQuery = query(
+      collection(db, 'users'),
+      where('createdAt', '>=', Timestamp.fromDate(timeThreshold)),
+      where('role', '==', 'customer'),
+      orderBy('createdAt', 'desc'),
+      limit(10)
+    );
+    const newCustomersSnap = await getDocs(newCustomersQuery);
+    
+    newCustomersSnap.forEach(doc => {
+      const user = doc.data();
+      const userDate = user.createdAt?.toDate?.() || new Date();
+      const timeAgo = getTimeAgo(userDate);
+      
+      const name = user.firstName || user.email?.split('@')[0] || 'Usuario';
+      events.push({
+        id: `user-${doc.id}`,
+        type: 'user',
+        text: `Nuevo cliente registrado: ${name}`,
+        time: timeAgo,
+        timestamp: userDate.getTime()
+      });
+    });
+
+    // 3. Low Stock Alerts
+    const lowStockItems = await getLowStockProducts(5);
+    lowStockItems.slice(0, 5).forEach(item => {
+      events.push({
+        id: `stock-${item.id}`,
+        type: 'stock',
+        text: `Stock bajo: ${item.name} (${item.stock} unidades)`,
+        time: 'ahora',
+        timestamp: now.getTime()
+      });
+    });
+
+    // 4. Order Status Updates (shipped/delivered in last 24h)
+    const updatedOrdersQuery = query(
+      collection(db, 'orders'),
+      where('updatedAt', '>=', Timestamp.fromDate(timeThreshold)),
+      where('status', 'in', ['shipped', 'delivered']),
+      orderBy('updatedAt', 'desc'),
+      limit(5)
+    );
+    const updatedOrdersSnap = await getDocs(updatedOrdersQuery);
+    
+    updatedOrdersSnap.forEach(doc => {
+      const order = doc.data();
+      const updateDate = order.updatedAt?.toDate?.() || new Date();
+      const timeAgo = getTimeAgo(updateDate);
+      
+      const statusText = order.status === 'shipped' ? 'enviado' : 'entregado';
+      events.push({
+        id: `status-${doc.id}`,
+        type: 'order',
+        text: `Pedido #ARK-${doc.id.slice(0, 4).toUpperCase()} marcado como ${statusText}`,
+        time: timeAgo,
+        timestamp: updateDate.getTime()
+      });
+    });
+
+    // Sort by timestamp (most recent first)
+    return events
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, 8); // Return top 8 events
+  } catch (error) {
+    console.error('Error fetching recent activity:', error);
+    return [];
+  }
+}
+
+// Helper function to format time difference
+function getTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'hace unos segundos';
+  if (diffMins < 60) return `hace ${diffMins}m`;
+  if (diffHours < 24) return `hace ${diffHours}h`;
+  if (diffDays < 7) return `hace ${diffDays}d`;
+  
+  return date.toLocaleDateString('es-AR');
 }
 
 // Customers
