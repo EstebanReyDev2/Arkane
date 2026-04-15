@@ -78,7 +78,7 @@ export function Footer() {
 
         {/* Bottom Row */}
         <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-[#333333] text-xs text-[#8C8680] font-body" style={{ fontFamily: 'var(--font-body)' }}>
-          <p>&copy; {new Date().getFullYear()} ARKADE. Todos los derechos reservados.</p>
+          <p>&copy; {new Date().getFullYear()} <BRAXEN></BRAXEN>. Todos los derechos reservados.</p>
           
           <div className="flex items-center gap-6 mt-4 md:mt-0">
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:text-[#FAFAFA] transition-colors" aria-label="Instagram">

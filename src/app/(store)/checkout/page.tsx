@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -8,10 +8,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, ChevronDown, ChevronUp, Lock, CreditCard } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Lock, CreditCard, AlertCircle } from 'lucide-react';
 import { useCartStore } from '@/src/lib/store/cartStore';
+import { useAuthState } from '@/src/lib/firebase/auth';
 import { db } from '@/src/lib/firebase/config';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore';
 
 const checkoutSchema = z.object({
   email: z.string().email('Email inválido'),
@@ -25,7 +26,7 @@ const checkoutSchema = z.object({
   city: z.string().min(2, 'Ciudad requerida'),
   phone: z.string().min(8, 'Teléfono requerido'),
   shippingMethod: z.enum(['standard', 'express', 'pickup']),
-  paymentMethod: z.enum(['credit_card', 'mercado_pago', 'transfer']),
+  paymentMethod: z.enum(['credit_card', 'mercado_pago', 'transfer', 'contact']),
   cardNumber: z.string().optional(),
   cardName: z.string().optional(),
   cardExpiry: z.string().optional(),
@@ -53,9 +54,13 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
+  const { user } = useAuthState();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<CheckoutFormValues | null>(null);
+  const [loadingUserData, setLoadingUserData] = useState(true);
 
   const {
     register,
@@ -75,8 +80,39 @@ export default function CheckoutPage() {
     },
   });
 
+  // Load user data if logged in
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (user) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            // Load shipping address if available
+            if (userData.shippingAddress) {
+              setValue('firstName', userData.firstName || userData.shippingAddress.firstName || '');
+              setValue('lastName', userData.lastName || userData.shippingAddress.lastName || '');
+              setValue('address', userData.shippingAddress.address || '');
+              setValue('apartment', userData.shippingAddress.apartment || '');
+              setValue('city', userData.shippingAddress.city || '');
+              setValue('province', userData.shippingAddress.province || '');
+              setValue('zipCode', userData.shippingAddress.zipCode || '');
+              setValue('phone', userData.phone || userData.shippingAddress.phone || '');
+            }
+            setValue('email', user.email || '');
+          }
+        } catch (error) {
+          console.error('Error loading user data:', error);
+        }
+      }
+      setLoadingUserData(false);
+    };
+    loadUserData();
+  }, [user, setValue]);
+
   const shippingMethod = watch('shippingMethod');
   const paymentMethod = watch('paymentMethod');
+  const email = watch('email');
 
   const getShippingCost = () => {
     if (shippingMethod === 'express') return 2500;
@@ -84,6 +120,22 @@ export default function CheckoutPage() {
   };
 
   const finalTotal = totalPrice() + getShippingCost();
+
+  // Check if "contactar" option is available based on total
+  const canUseContactOption = () => {
+    const total = finalTotal;
+    if (shippingMethod === 'pickup') return total >= 50000;
+    if (shippingMethod === 'standard') return total >= 100000;
+    if (shippingMethod === 'express') return total >= 200000;
+    return false;
+  };
+
+  const getContactMinimum = () => {
+    if (shippingMethod === 'pickup') return 50000;
+    if (shippingMethod === 'standard') return 100000;
+    if (shippingMethod === 'express') return 200000;
+    return 0;
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(price);
@@ -107,15 +159,50 @@ export default function CheckoutPage() {
   const onSubmit = async (data: CheckoutFormValues) => {
     if (items.length === 0) return;
     
+    // Show confirmation modal instead of submitting directly
+    setPendingSubmitData(data);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmOrder = async (data: CheckoutFormValues) => {
     setIsSubmitting(true);
     try {
+      // Save user shipping address if logged in
+      if (user) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          shippingAddress: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            address: data.address,
+            apartment: data.apartment || '',
+            city: data.city,
+            province: data.province,
+            zipCode: data.zipCode,
+            phone: data.phone,
+          },
+          phone: data.phone,
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      // Determine order status based on payment method
+      let orderStatus = 'confirmed';
+      if (data.paymentMethod === 'contact') {
+        orderStatus = 'pending_approval';
+      }
+
+      // Create order
       const orderData = {
         customerInfo: {
           email: data.email,
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
+          userId: user?.uid || null,
         },
+        customerName: `${data.firstName} ${data.lastName}`,
+        customerEmail: data.email,
+        customerPhone: data.phone,
         shippingAddress: {
           address: data.address,
           apartment: data.apartment || '',
@@ -133,17 +220,21 @@ export default function CheckoutPage() {
           quantity: item.quantity,
           color: item.color,
           size: item.size,
+          category: item.category || 'general',
           image: item.image,
         })),
         subtotal: totalPrice(),
         shippingCost: getShippingCost(),
         total: finalTotal,
-        status: 'pending',
+        status: orderStatus,
+        newsletter: data.newsletter || false,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       clearCart();
+      setShowConfirmModal(false);
       router.push(`/pedido-confirmado/${docRef.id}`);
     } catch (error) {
       console.error('Error creating order:', error);
@@ -293,7 +384,12 @@ export default function CheckoutPage() {
                 <div className="mb-10">
                   <div className="flex justify-between items-end mb-6">
                     <h2 className="text-xl font-display text-[#0D0D0D]">Información de contacto</h2>
-                    <Link href="/cuenta/login" className="text-sm text-[#C4714A] hover:underline font-body">¿Ya tenés cuenta? Iniciá sesión</Link>
+                    {!user && (
+                      <Link href="/cuenta/login" className="text-sm text-[#C4714A] hover:underline font-body">¿Ya tenés cuenta? Iniciá sesión</Link>
+                    )}
+                    {user && (
+                      <span className="text-sm text-[#16A34A] font-body">✓ Sesión iniciada</span>
+                    )}
                   </div>
                   
                   <InputField label="Email" name="email" type="email" />
@@ -480,7 +576,7 @@ export default function CheckoutPage() {
                   </div>
 
                   {/* Transferencia */}
-                  <div className={`${paymentMethod === 'transfer' ? 'bg-[#FAFAFA]' : 'bg-white'}`}>
+                  <div className={`border-b border-[#E8E4E0] ${paymentMethod === 'transfer' ? 'bg-[#FAFAFA]' : 'bg-white'}`}>
                     <label className="flex items-center p-4 cursor-pointer">
                       <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 ${paymentMethod === 'transfer' ? 'border-[#0D0D0D]' : 'border-[#C8C2BC]'}`}>
                         {paymentMethod === 'transfer' && <div className="w-2.5 h-2.5 bg-[#0D0D0D] rounded-full" />}
@@ -500,6 +596,39 @@ export default function CheckoutPage() {
                         </motion.div>
                       )}
                     </AnimatePresence>
+                  </div>
+
+                  {/* Contactar para coordinar */}
+                  <div className={`${paymentMethod === 'contact' ? 'bg-[#FAFAFA]' : 'bg-white'}`}>
+                    <label className={`flex items-center p-4 cursor-pointer ${!canUseContactOption() ? 'opacity-60 pointer-events-none' : ''}`}>
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center mr-4 ${paymentMethod === 'contact' ? 'border-[#0D0D0D]' : 'border-[#C8C2BC]'}`}>
+                        {paymentMethod === 'contact' && <div className="w-2.5 h-2.5 bg-[#0D0D0D] rounded-full" />}
+                      </div>
+                      <div className="flex-grow">
+                        <span className="font-body text-[15px] text-[#0D0D0D]">Continuar compra - Nos contactamos</span>
+                      </div>
+                      <input type="radio" value="contact" {...register('paymentMethod')} disabled={!canUseContactOption()} className="hidden" />
+                    </label>
+                    <AnimatePresence>
+                      {paymentMethod === 'contact' && (
+                        <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+                          <div className="p-4 pt-0 text-sm text-[#8C8680] font-body bg-[#F5F2ED] m-4 rounded-[2px]">
+                            <p className="font-medium text-[#0D0D0D] mb-2">Coordinar retiro o envío y pago</p>
+                            <p>Te contactaremos para coordinar la entrega y forma de pago que mejor se adapte a tu situación. Acuerdo con el cliente.</p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                    {!canUseContactOption() && (
+                      <div className="p-4 bg-[#FEF2F2] border-t border-[#FEE2E2]">
+                        <div className="flex items-start gap-2 text-[#991B1B] text-xs font-body">
+                          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                          <span>
+                            Mínimo ${getContactMinimum().toLocaleString('es-AR')} para {shippingMethod === 'pickup' ? 'retiro en tienda' : shippingMethod === 'standard' ? 'envío por cargo' : 'envío Adreani'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -587,6 +716,137 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
+
+      {/* CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showConfirmModal && pendingSubmitData && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => !isSubmitting && setShowConfirmModal(false)}
+            />
+
+            {/* Modal */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 border border-[#E8E4E0] max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-8 space-y-8">
+                {/* Header */}
+                <div className="border-b border-[#E8E4E0] pb-6">
+                  <h2 className="text-2xl font-display text-[#0D0D0D] mb-2">Confirmá tu pedido</h2>
+                  <p className="text-sm text-[#8C8680] font-body">Verificá todos los detalles antes de confirmar</p>
+                </div>
+
+                {/* Order Details */}
+                <div className="space-y-6">
+                  {/* Products */}
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#0D0D0D] mb-4">Productos</h3>
+                    <div className="space-y-3">
+                      {items.map((item) => (
+                        <div key={`${item.productId}-${item.variantId}`} className="flex justify-between text-sm font-body">
+                          <span className="text-[#0D0D0D]">{item.quantity}x {item.name} ({item.color} / {item.size})</span>
+                          <span className="font-medium text-[#0D0D0D]">{formatPrice(item.price * item.quantity)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="bg-[#F9F9FB] p-4 rounded-lg space-y-2 text-sm font-body">
+                    <div className="flex justify-between text-[#8C8680]">
+                      <span>Subtotal</span>
+                      <span className="text-[#0D0D0D]">{formatPrice(totalPrice())}</span>
+                    </div>
+                    <div className="flex justify-between text-[#8C8680]">
+                      <span>Envío</span>
+                      <span className="text-[#0D0D0D]">{getShippingCost() === 0 ? 'Gratis' : formatPrice(getShippingCost())}</span>
+                    </div>
+                    <div className="border-t border-[#E8E4E0] pt-2 flex justify-between font-bold">
+                      <span className="text-[#0D0D0D]">Total</span>
+                      <span className="text-[#0D0D0D]">{formatPrice(finalTotal)}</span>
+                    </div>
+                  </div>
+
+                  {/* Shipping Info */}
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#0D0D0D] mb-3">Datos de envío</h3>
+                    <div className="bg-[#F9F9FB] p-4 rounded-lg space-y-2 text-sm font-body text-[#0D0D0D]">
+                      <p><span className="text-[#8C8680]">Nombre:</span> {pendingSubmitData.firstName} {pendingSubmitData.lastName}</p>
+                      <p><span className="text-[#8C8680]">Dirección:</span> {pendingSubmitData.address}{pendingSubmitData.apartment ? ` ${pendingSubmitData.apartment}` : ''}</p>
+                      <p><span className="text-[#8C8680]">Ciudad:</span> {pendingSubmitData.city}, {pendingSubmitData.province} ({pendingSubmitData.zipCode})</p>
+                      <p><span className="text-[#8C8680]">Teléfono:</span> {pendingSubmitData.phone}</p>
+                      <p><span className="text-[#8C8680]">Email:</span> {pendingSubmitData.email}</p>
+                      <p><span className="text-[#8C8680]">Método:</span> {
+                        pendingSubmitData.shippingMethod === 'standard' ? 'Envío estándar (Gratis)' :
+                        pendingSubmitData.shippingMethod === 'express' ? 'Envío express ($2.500)' :
+                        'Retiro en tienda'
+                      }</p>
+                    </div>
+                  </div>
+
+                  {/* Payment Info */}
+                  <div>
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-[#0D0D0D] mb-3">Forma de pago</h3>
+                    <div className="bg-[#F9F9FB] p-4 rounded-lg text-sm font-body text-[#0D0D0D]">
+                      {pendingSubmitData.paymentMethod === 'credit_card' && (
+                        <>
+                          <p><span className="text-[#8C8680]">Tarjeta de crédito/débito</span></p>
+                          <p className="text-[#8C8680] text-xs mt-1">Cuotas: {pendingSubmitData.installments}</p>
+                        </>
+                      )}
+                      {pendingSubmitData.paymentMethod === 'mercado_pago' && (
+                        <p>Mercado Pago - Serás redirigido para completar</p>
+                      )}
+                      {pendingSubmitData.paymentMethod === 'transfer' && (
+                        <p>Transferencia bancaria (10% de descuento)</p>
+                      )}
+                      {pendingSubmitData.paymentMethod === 'contact' && (
+                        <p>Contactar para coordinar retiro/envío y pago</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-4 border-t border-[#E8E4E0] pt-6">
+                  <button
+                    type="button"
+                    onClick={() => !isSubmitting && setShowConfirmModal(false)}
+                    disabled={isSubmitting}
+                    className="flex-1 h-12 bg-white border border-[#E8E4E0] text-[#0D0D0D] rounded-lg font-body text-sm font-medium uppercase tracking-wider hover:bg-[#F9F9FB] transition-colors disabled:opacity-50"
+                  >
+                    Volver y revisar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pendingSubmitData && handleConfirmOrder(pendingSubmitData)}
+                    disabled={isSubmitting}
+                    className="flex-1 h-12 bg-[#0D0D0D] text-white rounded-lg font-body text-sm font-medium uppercase tracking-wider hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Procesando...
+                      </>
+                    ) : (
+                      <>
+                        <Check size={18} />
+                        Confirmar pedido
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
-  );
-}
