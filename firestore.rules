@@ -88,11 +88,15 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
-      // Users can read his own orders. Admins can read all orders.
+      // Users can read their own orders. Admins can read all orders.
       allow read: if isAuthenticated() && (resource.data.customerInfo.email == request.auth.token.email || isAdmin());
       
-      // Users can create their own orders.
-      allow create: if isAuthenticated() && request.resource.data.customerInfo.email == request.auth.token.email;
+      // Any authenticated user can create orders
+      allow create: if isAuthenticated() && 
+                       request.resource.data.customerInfo.email is string &&
+                       request.resource.data.customerInfo.email.size() > 0 &&
+                       request.resource.data.items is list &&
+                       request.resource.data.items.size() > 0;
       
       // Only admins can update or delete orders
       allow update, delete: if isAdmin();

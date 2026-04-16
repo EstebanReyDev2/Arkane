@@ -5,10 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'motion/react';
-import { useForm } from 'react-hook-form';
+import { useForm, useController } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Check, ChevronDown, ChevronUp, Lock, CreditCard, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCartStore } from '@/src/lib/store/cartStore';
 import { useAuthState } from '@/src/lib/firebase/auth';
 import { db } from '@/src/lib/firebase/config';
@@ -54,13 +55,12 @@ type CheckoutFormValues = z.infer<typeof checkoutSchema>;
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
-  const { user } = useAuthState();
+  const { user, loading: authLoading } = useAuthState();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingSubmitData, setPendingSubmitData] = useState<CheckoutFormValues | null>(null);
-  const [loadingUserData, setLoadingUserData] = useState(true);
 
   const {
     register,
@@ -68,6 +68,7 @@ export default function CheckoutPage() {
     watch,
     setValue,
     trigger,
+    control,
     formState: { errors, isValid },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -80,10 +81,18 @@ export default function CheckoutPage() {
     },
   });
 
+  // Check authentication and redirect if not logged in
+  useEffect(() => {
+    // Only redirect after auth state has been determined
+    if (!authLoading && !user) {
+      router.push('/cuenta/login?redirect=/checkout');
+    }
+  }, [user, authLoading, router]);
+
   // Load user data if logged in
   useEffect(() => {
-    const loadUserData = async () => {
-      if (user) {
+    if (!authLoading && user) {
+      const loadUserData = async () => {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
@@ -104,15 +113,13 @@ export default function CheckoutPage() {
         } catch (error) {
           console.error('Error loading user data:', error);
         }
-      }
-      setLoadingUserData(false);
-    };
-    loadUserData();
-  }, [user, setValue]);
+      };
+      loadUserData();
+    }
+  }, [user, authLoading, setValue]);
 
   const shippingMethod = watch('shippingMethod');
   const paymentMethod = watch('paymentMethod');
-  const email = watch('email');
 
   const getShippingCost = () => {
     if (shippingMethod === 'express') return 2500;
@@ -194,14 +201,14 @@ export default function CheckoutPage() {
       // Create order
       const orderData = {
         customerInfo: {
-          email: data.email,
+          email: user!.email!, // Use authenticated user email
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
-          userId: user?.uid || null,
+          userId: user!.uid,
         },
         customerName: `${data.firstName} ${data.lastName}`,
-        customerEmail: data.email,
+        customerEmail: user!.email!, // Use authenticated user email
         customerPhone: data.phone,
         shippingAddress: {
           address: data.address,
@@ -235,27 +242,45 @@ export default function CheckoutPage() {
       const docRef = await addDoc(collection(db, 'orders'), orderData);
       clearCart();
       setShowConfirmModal(false);
-      router.push(`/pedido-confirmado/${docRef.id}`);
+      setIsSubmitting(false);
+      
+      // Show success notification
+      toast.success('¡Pedido confirmado exitosamente!', {
+        description: `Tu pedido #${docRef.id.slice(0, 8).toUpperCase()} ha sido registrado.`,
+        duration: 2000,
+      });
+      
+      // Redirect after notification is shown
+      setTimeout(() => {
+        router.push(`/pedido-confirmado/${docRef.id}`);
+      }, 500);
     } catch (error) {
       console.error('Error creating order:', error);
       setIsSubmitting(false);
+      setShowConfirmModal(false);
+      
+      // Show error notification
+      toast.error('Error al confirmar el pedido', {
+        description: error instanceof Error ? error.message : 'Por favor intenta de nuevo',
+      });
     }
   };
 
   const InputField = ({ label, name, type = 'text', placeholder = '', width = 'w-full', maxLength }: any) => {
+    const { field } = useController({ name: name as keyof CheckoutFormValues, control });
     const error = errors[name as keyof CheckoutFormValues];
-    const value = watch(name as keyof CheckoutFormValues);
-    const isSuccess = value && !error && value.toString().length > 0;
+    const isSuccess = field.value && !error && String(field.value).length > 0;
 
     return (
       <div className={`flex flex-col gap-2 ${width}`}>
         <label className="text-sm font-body text-[#0D0D0D]">{label}</label>
         <div className="relative">
           <input
-            {...register(name as keyof CheckoutFormValues)}
+            {...field}
             type={type}
             placeholder={placeholder}
             maxLength={maxLength}
+            value={typeof field.value === 'string' ? field.value : ''}
             className={`w-full h-12 px-4 border rounded-[2px] font-body text-[15px] outline-none transition-colors ${
               error ? 'border-red-500 focus:border-red-500' : 
               isSuccess ? 'border-green-500 focus:border-green-500' : 
@@ -274,6 +299,19 @@ export default function CheckoutPage() {
   };
 
   return (
+    <>
+    {/* Loading state while checking authentication */}
+      {authLoading && (
+        <div className="w-full h-screen flex items-center justify-center bg-white">
+          <div className="text-center">
+            <div className="w-12 h-12 border-2 border-[#E8E4E0] border-t-[#0D0D0D] rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-[#8C8680] font-body">Verificando tu sesión...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Show checkout only when authenticated */}
+      {!authLoading && user && (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Simplified Header */}
       <header className="w-full border-b border-[#E8E4E0] bg-white py-6 flex justify-center sticky top-0 z-50">
@@ -384,15 +422,17 @@ export default function CheckoutPage() {
                 <div className="mb-10">
                   <div className="flex justify-between items-end mb-6">
                     <h2 className="text-xl font-display text-[#0D0D0D]">Información de contacto</h2>
-                    {!user && (
-                      <Link href="/cuenta/login" className="text-sm text-[#C4714A] hover:underline font-body">¿Ya tenés cuenta? Iniciá sesión</Link>
-                    )}
                     {user && (
                       <span className="text-sm text-[#16A34A] font-body">✓ Sesión iniciada</span>
                     )}
                   </div>
                   
-                  <InputField label="Email" name="email" type="email" />
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-body text-[#0D0D0D]">Email</label>
+                    <div className="w-full h-12 px-4 border border-[#E8E4E0] rounded-[2px] font-body text-[15px] bg-[#F9F9FB] flex items-center text-[#0D0D0D]">
+                      {user?.email}
+                    </div>
+                  </div>
                   
                   <div className="mt-4 flex items-center gap-3">
                     <input type="checkbox" id="newsletter" {...register('newsletter')} className="w-5 h-5 border-[#E8E4E0] rounded-[2px] accent-[#0D0D0D]" />
@@ -783,7 +823,7 @@ export default function CheckoutPage() {
                       <p><span className="text-[#8C8680]">Dirección:</span> {pendingSubmitData.address}{pendingSubmitData.apartment ? ` ${pendingSubmitData.apartment}` : ''}</p>
                       <p><span className="text-[#8C8680]">Ciudad:</span> {pendingSubmitData.city}, {pendingSubmitData.province} ({pendingSubmitData.zipCode})</p>
                       <p><span className="text-[#8C8680]">Teléfono:</span> {pendingSubmitData.phone}</p>
-                      <p><span className="text-[#8C8680]">Email:</span> {pendingSubmitData.email}</p>
+                      <p><span className="text-[#8C8680]">Email:</span> {user?.email}</p>
                       <p><span className="text-[#8C8680]">Método:</span> {
                         pendingSubmitData.shippingMethod === 'standard' ? 'Envío estándar (Gratis)' :
                         pendingSubmitData.shippingMethod === 'express' ? 'Envío express ($2.500)' :
@@ -850,5 +890,7 @@ export default function CheckoutPage() {
         )}
       </AnimatePresence>
     </div>
+      )}
+    </>
   );
 }

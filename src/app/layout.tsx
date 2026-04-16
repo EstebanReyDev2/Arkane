@@ -4,6 +4,7 @@ import './globals.css'; // Global styles
 import QueryProvider from '@/src/lib/providers/QueryProvider';
 import AuthProvider from '@/src/lib/providers/AuthProvider';
 import { SafeConsole } from '@/src/components/SafeConsole';
+import { Toaster } from '@/src/components/ui/sonner';
 import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
@@ -36,6 +37,7 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
         <AuthProvider>
           <QueryProvider>
             <main className="flex-grow">{children}</main>
+            <Toaster />
           </QueryProvider>
         </AuthProvider>
       </body>
