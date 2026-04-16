@@ -195,7 +195,7 @@ export default function CheckoutPage() {
       // Determine order status based on payment method
       let orderStatus = 'confirmed';
       if (data.paymentMethod === 'contact') {
-        orderStatus = 'pending_approval';
+        orderStatus = 'pending';
       }
 
       // Create order

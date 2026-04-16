@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { 
   Sheet, 
@@ -22,9 +22,10 @@ import {
   Package, 
   User, 
   MapPin,
-  ChevronRight
+  ChevronRight,
+  RefreshCcw
 } from 'lucide-react';
-import { Order, OrderStatus, updateOrderStatus } from '@/src/lib/firebase/admin-queries';
+import { Order, OrderStatus, updateOrderStatus, updateOrderNotes } from '@/src/lib/firebase/admin-queries';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { toast } from '@/src/hooks/use-toast';
@@ -47,13 +48,24 @@ const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: a
   confirmed: { label: 'Confirmado', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
   shipped: { label: 'Enviado', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Truck },
   delivered: { label: 'Entregado', color: 'bg-green-100 text-green-700 border-green-200', icon: Package },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', icon: X }
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', icon: X },
+  refunded: { label: 'Reembolsado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: RefreshCcw }
 };
+
+const DEFAULT_STATUS_CONFIG = { label: 'Desconocido', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: Package };
 
 export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDetailDrawerProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
+  const [internalNote, setInternalNote] = useState('');
   const [notifyCustomer, setNotifyCustomer] = useState(true);
+
+  useEffect(() => {
+    if (order) {
+      setTrackingNumber(order.trackingNumber || '');
+      setInternalNote(order.notes?.internal || '');
+    }
+  }, [order]);
 
   if (!order) return null;
 
@@ -61,7 +73,9 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
     setIsUpdating(true);
     try {
       await updateOrderStatus(order.id, newStatus, trackingNumber || undefined);
-      toast({ title: `Pedido marcado como ${STATUS_CONFIG[newStatus].label}` });
+      const normalizedNewStatus = newStatus?.toLowerCase() as OrderStatus;
+      const config = STATUS_CONFIG[normalizedNewStatus] ?? DEFAULT_STATUS_CONFIG;
+      toast({ title: `Pedido marcado como ${config.label}` });
       onUpdate();
     } catch (error) {
       toast({ title: "Error al actualizar el estado", variant: "destructive" });
@@ -75,7 +89,8 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
     toast({ title: "Copiado al portapapeles" });
   };
 
-  const statusInfo = STATUS_CONFIG[order.status];
+  const normalizedStatus = order.status?.toLowerCase() || 'pending';
+  const statusInfo = STATUS_CONFIG[normalizedStatus as OrderStatus] ?? DEFAULT_STATUS_CONFIG;
   const StatusIcon = statusInfo.icon;
 
   return (
@@ -210,6 +225,36 @@ export function OrderDetailDrawer({ order, isOpen, onClose, onUpdate }: OrderDet
                 </div>
               </div>
               <p className="text-[15px] font-bold text-[#18181B]">${order.total.toLocaleString('es-AR')}</p>
+            </div>
+          </section>
+
+          {/* NOTA INTERNA */}
+          <section className="space-y-4">
+            <h3 className="text-[12px] font-bold uppercase tracking-widest text-[#71717A]">Nota interna</h3>
+            <div className="space-y-2">
+              <Input 
+                placeholder="Agregar nota interna (solo visible para admin)..." 
+                value={internalNote}
+                onChange={(e) => setInternalNote(e.target.value)}
+                className="text-[13px]"
+              />
+              {internalNote !== (order.notes?.internal || '') && (
+                <Button 
+                  size="sm" 
+                  className="h-8 text-[11px] font-bold"
+                  onClick={async () => {
+                    try {
+                      const { updateOrderNotes } = await import('@/src/lib/firebase/admin-queries');
+                      await updateOrderNotes(order.id, { internal: internalNote });
+                      toast({ title: "Nota guardada" });
+                    } catch (error) {
+                      toast({ title: "Error al guardar nota", variant: "destructive" });
+                    }
+                  }}
+                >
+                  Guardar nota
+                </Button>
+              )}
             </div>
           </section>
 

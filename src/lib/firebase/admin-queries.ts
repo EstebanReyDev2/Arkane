@@ -19,7 +19,14 @@ import {
 import { db } from './config';
 import { Product } from '@/src/types/product';
 
-export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+export type OrderStatus = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled' | 'refunded';
+
+export interface StatusHistoryEntry {
+  status: OrderStatus;
+  changedAt: any;
+  changedBy?: string;
+  note?: string;
+}
 
 export interface Order {
   id: string;
@@ -32,11 +39,16 @@ export interface Order {
   discount?: number;
   shippingCost?: number;
   status: OrderStatus;
+  statusHistory?: StatusHistoryEntry[];
   createdAt: any;
   updatedAt: any;
   shippingAddress: any;
   paymentMethod: string;
   trackingNumber?: string;
+  notes?: {
+    customer?: string;
+    internal?: string;
+  };
 }
 
 export interface DashboardStats {
@@ -269,6 +281,22 @@ export async function updateOrderStatus(
     await updateDoc(doc(db, 'orders', id), data);
   } catch (error) {
     console.error('Error updating order status:', error);
+    throw error;
+  }
+}
+
+export async function updateOrderNotes(
+  id: string, 
+  notes: { internal?: string; customer?: string }
+): Promise<void> {
+  try {
+    const data: any = { 
+      notes: { ...notes },
+      updatedAt: Timestamp.now() 
+    };
+    await updateDoc(doc(db, 'orders', id), data);
+  } catch (error) {
+    console.error('Error updating order notes:', error);
     throw error;
   }
 }

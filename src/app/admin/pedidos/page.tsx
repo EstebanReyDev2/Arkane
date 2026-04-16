@@ -28,7 +28,9 @@ import {
   Truck,
   Package,
   X,
-  MoreHorizontal
+  MoreHorizontal,
+  PackageCheck,
+  RefreshCcw
 } from 'lucide-react';
 import { 
   Table, 
@@ -70,15 +72,21 @@ const STATUS_TABS = [
   { id: 'confirmed', label: 'Confirmado', count: 0 },
   { id: 'shipped', label: 'Enviado', count: 0 },
   { id: 'delivered', label: 'Entregado', count: 0 },
+  { id: 'cancelled', label: 'Cancelado', count: 0 },
+  { id: 'refunded', label: 'Reembolsado', count: 0 },
 ];
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: any }> = {
   pending: { label: 'Pendiente', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
   confirmed: { label: 'Confirmado', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle2 },
   shipped: { label: 'Enviado', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Truck },
-  delivered: { label: 'Entregado', color: 'bg-green-100 text-green-700 border-green-200', icon: Package },
-  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', icon: X }
+  delivered: { label: 'Entregado', color: 'bg-green-100 text-green-700 border-green-200', icon: PackageCheck },
+  cancelled: { label: 'Cancelado', color: 'bg-red-100 text-red-700 border-red-200', icon: X },
+  refunded: { label: 'Reembolsado', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: RefreshCcw }
 };
+
+// Default config para estados desconocidos
+const DEFAULT_STATUS_CONFIG = { label: 'Desconocido', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: Package };
 
 const columnHelper = createColumnHelper<Order>();
 
@@ -92,6 +100,7 @@ export default function OrdersPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -116,6 +125,21 @@ export default function OrdersPage() {
       result = result.filter((order: Order) => order.status === activeTab);
     }
 
+    if (globalFilter) {
+      const search = globalFilter.toLowerCase();
+      result = result.filter((order: Order) => 
+        order.id.toLowerCase().includes(search) ||
+        order.customerName.toLowerCase().includes(search) ||
+        order.customerEmail.toLowerCase().includes(search) ||
+        (order.customerPhone && order.customerPhone.toLowerCase().includes(search)) ||
+        order.items.some((item: any) => item.name?.toLowerCase().includes(search))
+      );
+    }
+
+    if (paymentMethodFilter && paymentMethodFilter !== 'all') {
+      result = result.filter((order: Order) => order.paymentMethod === paymentMethodFilter);
+    }
+
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -129,7 +153,7 @@ export default function OrdersPage() {
     }
 
     return result;
-  }, [orders, activeTab, startDate, endDate]);
+  }, [orders, activeTab, globalFilter, paymentMethodFilter, startDate, endDate]);
 
   const counts = useMemo(() => {
     const res: Record<string, number> = { all: orders.length };
@@ -229,7 +253,16 @@ export default function OrdersPage() {
       },
     }),
     columnHelper.accessor('total', {
-      header: "Total",
+      header: ({ column }) => (
+        <Button 
+          variant="ghost" 
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="p-0 hover:bg-transparent text-[11px] font-bold uppercase tracking-wider text-[#71717A]"
+        >
+          Total
+          <ArrowUpDown className="ml-2 h-3 w-3" />
+        </Button>
+      ),
       cell: info => (
         <span className="text-[13px] font-bold text-[#18181B]">
           ${info.getValue().toLocaleString('es-AR')}
@@ -248,20 +281,21 @@ export default function OrdersPage() {
     columnHelper.accessor('status', {
       header: "Estado",
       cell: info => {
+        const [isOpen, setIsOpen] = useState(false);
         const status = info.getValue();
-        const config = STATUS_CONFIG[status];
+        const normalizedStatus = status?.toLowerCase() || 'pending';
+        const config = STATUS_CONFIG[normalizedStatus as OrderStatus] || DEFAULT_STATUS_CONFIG;
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Slot />}>
-              <Badge 
-                className={cn(
-                  "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all hover:opacity-80",
-                  config.color
-                )}
-              >
-                {config.label}
-              </Badge>
-            </DropdownMenuTrigger>
+          <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+            <button 
+              onClick={() => setIsOpen(!isOpen)}
+              className={cn(
+                "px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border cursor-pointer transition-all hover:opacity-80 rounded",
+                config.color
+              )}
+            >
+              {config.label}
+            </button>
             <DropdownMenuContent align="end" className="w-40">
               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-[#71717A]">Cambiar estado</DropdownMenuLabel>
               <DropdownMenuSeparator />
@@ -271,6 +305,7 @@ export default function OrdersPage() {
                   onClick={(e) => {
                     e.stopPropagation();
                     handleStatusUpdate(info.row.original.id, s);
+                    setIsOpen(false);
                   }}
                   className="text-[12px] gap-2"
                 >
@@ -400,6 +435,16 @@ export default function OrdersPage() {
                 onChange={(e) => setGlobalFilter(e.target.value)}
               />
             </div>
+            <select
+              value={paymentMethodFilter}
+              onChange={(e) => setPaymentMethodFilter(e.target.value)}
+              className="h-10 px-3 text-[13px] border border-[#E4E4E7] rounded-md bg-white"
+            >
+              <option value="all">Todos los pagos</option>
+              <option value="contact">Contra entrega</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mercadopago">MercadoPago</option>
+            </select>
             <div className="flex items-center gap-2">
               <div className="flex items-center border border-[#E4E4E7] rounded-md overflow-hidden h-10">
                 <Input 
