@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface CartItem {
+  category: string;
   productId: string;
   variantId: string;
   name: string;
