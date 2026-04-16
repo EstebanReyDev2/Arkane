@@ -33,6 +33,7 @@ export function ProductCard({ product, showSaleBadge = true }: ProductCardProps)
     const variant = product.variants[0];
     if (variant) {
       addItem({
+        category: product.category,
         productId: product.id,
         variantId: variant.id,
         name: product.name,

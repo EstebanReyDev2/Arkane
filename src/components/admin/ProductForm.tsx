@@ -242,7 +242,14 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   };
 
   const generateVariants = () => {
-    if (colors.length === 0 || selectedSizes.length === 0) {
+    // Include pending color input if exists
+    let finalColors = [...colors];
+    if (newColorName.trim() && !colors.find(c => c.name === newColorName)) {
+      finalColors = [...finalColors, { name: newColorName.trim(), hex: newColorHex }];
+      setNewColorName('');
+    }
+
+    if (finalColors.length === 0 || selectedSizes.length === 0) {
       toast({ title: "Definí al menos un color y un talle", variant: "destructive" });
       return;
     }
@@ -251,7 +258,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     const newVariants = [...currentVariants];
     let addedCount = 0;
 
-    colors.forEach(color => {
+    finalColors.forEach(color => {
       selectedSizes.forEach(size => {
         const exists = currentVariants.some(v => v.color === color.name && v.size === size);
         if (!exists) {

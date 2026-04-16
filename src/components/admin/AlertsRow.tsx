@@ -12,7 +12,7 @@ interface LowStockProduct {
 
 interface ActivityEvent {
   id: string;
-  type: 'order' | 'user' | 'stock';
+  type: 'order' | 'user' | 'stock' | 'product';
   text: string;
   time: string;
 }

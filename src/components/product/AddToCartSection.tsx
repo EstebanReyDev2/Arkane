@@ -36,6 +36,7 @@ export function AddToCartSection({ product, selectedVariant }: AddToCartSectionP
     if (selectedVariant.stock === 0) return;
 
     addItem({
+      category: product.category,
       productId: product.id,
       variantId: selectedVariant.id,
       name: product.name,
